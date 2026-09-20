@@ -80,9 +80,11 @@ class MultiHeadAttention(nn.Module):
         scores = Q @ K.transpose(-2, -1) / math.sqrt(self.d_k) # scores computed per token pair
 
         # masking on scores
+        '''
         mask = torch.tril(torch.ones(seq_len, seq_len)).to(x.device)
         if mask is not None:
             scores = scores.masked_fill(mask == 0, float('-inf'))
+        '''
 
         weights = torch.softmax(scores, dim=-1)
         output = weights @ V
@@ -128,9 +130,65 @@ class GPT(nn.Module):
         x = self.norm(x)
         x = self.layer(x)
         return x
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+model = GPT(
+    vocab_size=vocab_size,
+    d_model=512,
+    num_heads=8,
+    d_k=64,
+    d_ff=2048,
+    num_layers=6,
+    block_size=block_size
+).to(device)
+
+optimizer = optim.Adam(model.parameters(), lr=3e-4)
+criterion = nn.CrossEntropyLoss()
+
+# training loop
+epochs = 10
+for epoch in range(epochs):
+    model.train()
+    total_loss = 0
+    for _ in range(200):  # 200 batches per epoch
+        x, y = get_batch('train')
+        x, y = x.to(device), y.to(device)
+
+        optimizer.zero_grad()
+        logits = model(x)  # [batch, seq_len, vocab_size]
         
+        # reshape for cross entropy
+        loss = criterion(logits.view(-1, vocab_size), y.view(-1))
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
 
+    print(f"epoch {epoch+1}, loss: {total_loss/200:.4f}")
 
+    # validation
+    model.eval()
+    with torch.no_grad():
+        x, y = get_batch('val')
+        x, y = x.to(device), y.to(device)
+        logits = model(x)
+        val_loss = criterion(logits.view(-1, vocab_size), y.view(-1))
+        print(f"val loss: {val_loss.item():.4f}")
+
+# generate some text
+model.eval()
+with torch.no_grad():
+    context = torch.zeros((1, 1), dtype=torch.long).to(device)
+    generated = []
+    for _ in range(500):
+        logits = model(context)
+        logits = logits[:, -1, :]  # last token predictions
+        probs = torch.softmax(logits, dim=-1)
+        next_token = torch.multinomial(probs, num_samples=1)
+        context = torch.cat([context, next_token], dim=1)
+        generated.append(next_token.item())
+
+print(''.join([idx_to_char[int(i)] for i in generated]))
 
 
 

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import urllib.request
+import math
 from torch.utils.data import DataLoader, Dataset
 
 
@@ -22,7 +23,7 @@ data = torch.tensor([char_to_idx[c] for c in text], dtype=torch.long)
 
 n = int(0.9 * len(data))
 train_data = data[:n]
-val_data = data[:n] # validate
+val_data = data[n:] # validate
 
 block_size = 64 # "context" size, for decoder indexing
 batch_size = 32
@@ -60,8 +61,41 @@ class MultiHeadAttention(nn.Module):
         self.W_o = nn.Linear(d_model, d_model)
         self.num_heads = num_heads
         self.d_k = d_k
+        self.d_model = d_model
         #output projection
-    def forward(self, x):
+    def forward(self, x, mask=None):
+        batch, seq_len, d_model = x.shape
+        Q = self.W_q(x)
+        K = self.W_k(x)
+        V = self.W_v(x)
+        # [batch, seq_len, d_model]
+        # split into 8 heads for parallelism on attention
+        Q = Q.view(batch, seq_len, self.num_heads, self.d_k) # then split
+        Q = Q.transpose(1, 2) # reorder
+        K = K.view(batch, seq_len, self.num_heads, self.d_k)
+        K = K.transpose(1, 2)
+        V = V.view(batch, seq_len, self.num_heads, self.d_k)
+        V = V.transpose(1, 2) 
+
+        scores = Q @ K.transpose(-2, -1) / math.sqrt(self.d_k) # scores computed per token pair
+
+        # masking on scores
+        mask = torch.tril(torch.ones(seq_len, seq_len)).to(x.device)
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, float('-inf'))
+
+        weights = torch.softmax(scores, dim=-1)
+        output = weights @ V
+        # concatenate the heads back together
+
+        output = output.transpose(1, 2).contiguous().view(batch, seq_len, self.d_model)
+
+        output = self.W_o(output)
+        return output
+
+
+
+
 
 
 

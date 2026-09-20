@@ -38,10 +38,10 @@ def get_batch(split):
 
 
 class FeedForward(nn.Module):
-    def __init__(self):
+    def __init__(self, d_model, d_ff):
         super().__init__() 
-        self.lin1 = nn.Linear(512, 2048)
-        self.lin2 = nn.Linear(2048, 512)
+        self.lin1 = nn.Linear(d_model, d_ff)
+        self.lin2 = nn.Linear(d_ff, d_model)
         self.relu = nn.ReLU()
     def forward(self, x):
         x = self.lin2(self.relu(self.lin1(x)))
@@ -92,6 +92,24 @@ class MultiHeadAttention(nn.Module):
 
         output = self.W_o(output)
         return output
+
+
+class TransformerBlock(nn.Module):
+    def __init__(self, d_model, num_heads, d_k, d_ff):
+        super().__init__()
+        self.attention = MultiHeadAttention(d_model, num_heads, d_k)
+        self.feed_forward = FeedForward(d_model, d_ff)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+    def forward(self, x, mask=None):
+        x = x + self.attention(x, mask)
+        x = self.norm1(x)
+        x = x + self.feed_forward(x)
+        x = self.norm2(x)
+        return x
+
+
+
 
 
 

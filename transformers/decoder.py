@@ -80,11 +80,10 @@ class MultiHeadAttention(nn.Module):
         scores = Q @ K.transpose(-2, -1) / math.sqrt(self.d_k) # scores computed per token pair
 
         # masking on scores
-        '''
-        mask = torch.tril(torch.ones(seq_len, seq_len)).to(x.device)
+
         if mask is not None:
             scores = scores.masked_fill(mask == 0, float('-inf'))
-        '''
+        
 
         weights = torch.softmax(scores, dim=-1)
         output = weights @ V
@@ -131,7 +130,7 @@ class GPT(nn.Module):
         x = self.layer(x)
         return x
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
 
 model = GPT(
     vocab_size=vocab_size,
@@ -181,7 +180,8 @@ with torch.no_grad():
     context = torch.zeros((1, 1), dtype=torch.long).to(device)
     generated = []
     for _ in range(500):
-        logits = model(context)
+        context_crop = context[:, -block_size:]
+        logits = model(context_crop)
         logits = logits[:, -1, :]  # last token predictions
         probs = torch.softmax(logits, dim=-1)
         next_token = torch.multinomial(probs, num_samples=1)

@@ -35,6 +35,7 @@ def get_batch(split):
     return x, y
 
 
+
 class FeedForward(nn.Module):
     def __init__(self):
         super().__init__() 
@@ -44,4 +45,26 @@ class FeedForward(nn.Module):
     def forward(self, x):
         x = self.lin2(self.relu(self.lin1(x)))
         return x
+
+class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model, num_heads, d_k):
+        super().__init__()
+        # Q, K, V -> parameters
+        # d_model = input/output dimension
+        # num_heads = split for "multi-head" attention
+        # d_k = d_model // num_heads (64)
+
+        self.W_q = nn.Linear(d_model, d_model)
+        self.W_k = nn.Linear(d_model, d_model)
+        self.W_v = nn.Linear(d_model, d_model)
+        self.W_o = nn.Linear(d_model, d_model)
+        self.num_heads = num_heads
+        self.d_k = d_k
+        #output projection
+    def forward(self, x):
+
+
+
+
+
 

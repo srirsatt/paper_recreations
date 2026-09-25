@@ -1,3 +1,26 @@
+from torch._inductor import compile_fx
+from torch._inductor import compile_fx
+from torch._inductor import compile_fx
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
+from torch.nn import parameter
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -47,6 +70,19 @@ class FeedForward(nn.Module):
         x = self.lin2(self.relu(self.lin1(x)))
         return x
 
+
+class LoRALinear(nn.Module):
+    def __init__(self, linear, r):
+        super().__init__()
+        # rank r -> parameter for forward learning
+        self.linear = linear # freeze, our passed in nn.linear in something like W_q
+        self.A = nn.Parameter(torch.randn(r, linear.in_features) * 0.01) # random gaussian
+        self.B = nn.Parameter(torch.zeros(linear.out_features, r)) # zeros straight
+        for param in self.linear.parameters():
+                param.requires_grad = False # freeze weights
+    def forward(self, x):
+        return self.linear(x) + (self.B @ self.A) @ x
+
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, num_heads, d_k):
         super().__init__()
@@ -55,8 +91,8 @@ class MultiHeadAttention(nn.Module):
         # num_heads = split for "multi-head" attention
         # d_k = d_model // num_heads (64)
 
-        self.W_q = nn.Linear(d_model, d_model)
-        self.W_k = nn.Linear(d_model, d_model)
+        self.W_q = LoRALinear(nn.Linear(d_model, d_model), r=4)
+        self.W_k = LoRALinear(nn.Linear(d_model, d_model), r=4)
         self.W_v = nn.Linear(d_model, d_model)
         self.W_o = nn.Linear(d_model, d_model)
         self.num_heads = num_heads
@@ -93,6 +129,7 @@ class MultiHeadAttention(nn.Module):
 
         output = self.W_o(output)
         return output
+
 
 
 class TransformerBlock(nn.Module):

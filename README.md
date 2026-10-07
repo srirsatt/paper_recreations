@@ -19,4 +19,4 @@ In total, I was able to implement Attention is All You Need (paper linked) & a G
 
 I was also able to learn FlashAttention, and I'm saving implementation for later as a CUDA Kernel.
 
-I've transferred learning to my CUDAinference repository, which is more CUDA focused ML & LLM Inference.
+I've transferred learning to my [CUDA Inference](https://github.com/srirsatt/CUDAinference) repository, which is more CUDA focused ML & LLM Inference.
